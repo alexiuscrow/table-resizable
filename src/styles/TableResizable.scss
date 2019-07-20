@@ -1,0 +1,65 @@
+$splitter-margin-y: .2rem;
+$splitter-color: $info;
+$splitter-width: .15rem;
+$splitter-opacity: .6;
+$space-between-splitters: .14rem;
+
+.table-resizable {
+  td {
+    height: 1px;
+
+    @-moz-document url-prefix() {
+      height: 100%;
+    }
+  }
+
+  .th-content-wrapper,
+  .td-content-wrapper {
+    position: relative;
+    height: 100%;
+    display: inline-table;
+    width: 100%;
+
+    .content {
+      display: inline-block;
+      padding: $table-cell-padding;
+      width: 100%;
+    }
+
+    .resize-drag-zone {
+      opacity: $splitter-opacity;
+      width: ($table-cell-padding * 2);
+      right: ($table-cell-padding * -1);
+      height: 100%;
+      cursor: col-resize;
+      display: inline-flex;
+      flex-direction: row;
+      justify-content: space-between;
+      position: absolute;
+      z-index: 1;
+
+      &.dragging .splitter {
+        visibility: visible;
+      }
+
+      .splitter {
+        visibility: hidden;
+        width: $splitter-width;
+        border: 1px solid $splitter-color;
+        margin-top: $splitter-margin-y;
+        margin-bottom: $splitter-margin-y;
+      }
+
+      .splitter-left {
+        margin-left: ($table-cell-padding - $splitter-width - $space-between-splitters);
+        border-left: 0;
+      }
+
+      .splitter-right {
+        margin-right: ($table-cell-padding - $splitter-width - $space-between-splitters);
+        border-right: 0;
+      }
+    }
+  }
+
+}

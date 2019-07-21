@@ -83,9 +83,9 @@ class TableResizable extends React.Component {
 
         if (rows) {
             rowsJsx = rows.map((row, i) => {
-                const tdsJsx = row.map((col, j) => {
+                const tdsJsx = row.columns.map((col, j) => {
                     let resizeDrugZone = null;
-                    if ((j + 1) !== row.length) {
+                    if ((j + 1) !== row.columns.length) {
                         const processedClassName = classNames('resize-drag-zone', {
                             dragging: (j === this.state.dragZone.colIndex)
                         });

@@ -5,7 +5,17 @@ $splitter-opacity: .6;
 $space-between-splitters: .14rem;
 
 .table-resizable {
-  td {
+
+  &.table-bordered {
+    .th-content-wrapper,
+    .td-content-wrapper {
+      .resize-drag-zone {
+        right: calc(#{$table-cell-padding * -1} + -#{$table-border-width});
+      }
+    }
+  }
+
+  th, td {
     height: 1px;
 
     @-moz-document url-prefix() {
@@ -17,13 +27,19 @@ $space-between-splitters: .14rem;
   .td-content-wrapper {
     position: relative;
     height: 100%;
-    display: inline-table;
+    display: inline-block; // if something goes wrong let's take a deep breath & try inline-table
     width: 100%;
 
     .content {
       display: inline-block;
       padding: $table-cell-padding;
       width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      &.overflow-visible {
+        overflow: visible;
+      }
     }
 
     .resize-drag-zone {

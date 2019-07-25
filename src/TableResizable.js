@@ -7,9 +7,11 @@ class TableResizable extends React.Component {
     constructor(props) {
         super(props);
 
+        this.MIN_COLUMN_WIDTH = 100; // px
+
         this.state = {
             dragZone: {
-                initHeaderWidths: [],
+                startColumnWidths: [],
                 colIndex: undefined,
                 startX: undefined
             }
@@ -98,10 +100,12 @@ class TableResizable extends React.Component {
                                 <div className="splitter splitter-right"/>
                             </div>);
                     }
+                    const processedClassName = classNames('p-0', (col.props || {}).className);
+                    const processedContentClassName = classNames('content', ((col.contentBlock || {}).props || {}).className);
                     return (
-                        <td key={j} className="p-0" {...col.props}>
+                        <td key={j} {...col.props} className={processedClassName}>
                             <div className="td-content-wrapper">
-                                <div className="content">
+                                <div {...(col.contentBlock || {}).props} className={processedContentClassName}>
                                     {col.content}
                                 </div>
                                 {resizeDrugZone}
@@ -130,14 +134,14 @@ class TableResizable extends React.Component {
     onMouseDown(e) {
         this.stopPropagation(e);
 
-        const headerWidths = this.headerRefs.map(ref => ref.offsetWidth);
-        headerWidths.forEach((width, i) => this.columnRefs[i].style.width = `${width}px`);
+        const columnWidths = this.headerRefs.map(ref => ref.offsetWidth);
+        columnWidths.forEach((width, i) => this.columnRefs[i].style.width = `${width}px`);
 
         this.setState({
             ...this.state,
             dragZone: {
                 ...this.state.dragZone,
-                initHeaderWidths: headerWidths,
+                startColumnWidths: columnWidths,
                 colIndex: Number(e.currentTarget.attributes['data-col-index'].value),
                 startX: e.nativeEvent.clientX
             }
@@ -150,24 +154,27 @@ class TableResizable extends React.Component {
             const diffX = e.screenX - this.state.dragZone.startX;
 
             if (diffX !== 0) {
-                const {initHeaderWidths, colIndex} = this.state.dragZone;
-                const headerWidths = [];
+                const resizedColumnsWidths = this.getResizedColumnsWidths(diffX);
 
-                if (diffX > 0) {
-                    headerWidths[colIndex] = initHeaderWidths[colIndex] + diffX;
-                    const restX = diffX / (initHeaderWidths.length - 1 - colIndex);
-                    for (let i = (colIndex + 1); i < initHeaderWidths.length; i++) {
-                        headerWidths[i] = initHeaderWidths[i] - restX;
-                    }
+                if (resizedColumnsWidths.every(w => !w)) {
+                    const startColumnWidths = this.headerRefs.map(ref => ref.offsetWidth);
+                    const prevStartX = this.state.dragZone.startX;
+                    this.setState({
+                        ...this.state,
+                        dragZone: {
+                            ...this.state.dragZone,
+                            startColumnWidths: startColumnWidths,
+                            startX: e.screenX
+                        }
+                    }, () => {
+                        const diffX = this.state.dragZone.startX - prevStartX;
+                        if (diffX !== 0) {
+                            this.getResizedColumnsWidths(diffX).forEach((width, i) => width && (this.columnRefs[i].style.width = `${width}px`));
+                        }
+                    });
                 } else {
-                    headerWidths[colIndex + 1] = initHeaderWidths[colIndex + 1] + (diffX * -1);
-                    const restX = (diffX * -1) / (initHeaderWidths.length - 1 - colIndex);
-                    for (let i = 0; i < colIndex + 1; i++) {
-                        headerWidths[i] = initHeaderWidths[i] - restX;
-                    }
+                    resizedColumnsWidths.forEach((width, i) => width && (this.columnRefs[i].style.width = `${width}px`));
                 }
-
-                headerWidths.forEach((width, i) => this.columnRefs[i].style.width = `${width}px`);
             }
         }
     }
@@ -176,18 +183,66 @@ class TableResizable extends React.Component {
         if (this.state.dragZone.startX) {
             this.stopPropagation(e);
 
-            const headerWidths = this.headerRefs.map(ref => ref.offsetWidth);
-            headerWidths.forEach((width, i) => this.columnRefs[i].style.width = `${width}px`);
+            const columnWidths = this.headerRefs.map(ref => ref.offsetWidth);
+            columnWidths.forEach((width, i) => this.columnRefs[i].style.width = `${width}px`);
 
             this.setState({
                 ...this.state,
                 dragZone: {
-                    initHeaderWidths: [],
+                    startColumnWidths: [],
                     colIndex: undefined,
                     startX: undefined
                 }
             });
         }
+    }
+
+    getResizedColumnsWidths(diffX, startColumnWidths, colIndex, columnWidths = []) {
+        if (!startColumnWidths || (!colIndex && colIndex !== 0)) {
+            return this.getResizedColumnsWidths(diffX, this.state.dragZone.startColumnWidths, this.state.dragZone.colIndex);
+        }
+
+        if (diffX > 0) {
+            const restX = diffX / (startColumnWidths.length - (colIndex + 1) - columnWidths.filter(h => h === false).length);
+            for (let i = (colIndex + 1); i < startColumnWidths.length; i++) {
+                if (columnWidths[i] !== false) {
+                    const resultWidth = startColumnWidths[i] - restX;
+                    if (resultWidth < this.MIN_COLUMN_WIDTH) {
+                        columnWidths[i] = false;
+                        return this.getResizedColumnsWidths(diffX, startColumnWidths, colIndex, columnWidths);
+                    } else {
+                        columnWidths[i] = resultWidth;
+                    }
+                }
+            }
+
+            if (columnWidths.some(w => w !== false)) {
+                columnWidths[colIndex] = startColumnWidths[colIndex] + diffX;
+            } else {
+                columnWidths[colIndex] = false;
+            }
+        } else {
+            const restX = (diffX * -1) / (startColumnWidths.length - (startColumnWidths.length - (colIndex + 1)) - columnWidths.filter(h => h === false).length);
+            for (let i = 0; i < colIndex + 1; i++) {
+                if (columnWidths[i] !== false) {
+                    const resultWidth = startColumnWidths[i] - restX;
+                    if (resultWidth < this.MIN_COLUMN_WIDTH) {
+                        columnWidths[i] = false;
+                        return this.getResizedColumnsWidths(diffX, startColumnWidths, colIndex, columnWidths);
+                    } else {
+                        columnWidths[i] = resultWidth;
+                    }
+                }
+            }
+
+            if (columnWidths.some(w => w !== false)) {
+                columnWidths[colIndex + 1] = startColumnWidths[colIndex + 1] + (diffX * -1);
+            } else {
+                columnWidths[colIndex] = false;
+            }
+        }
+
+        return columnWidths;
     }
 
     stopPropagation(e) {
